@@ -1,0 +1,99 @@
+boolean relayOn = false; // true when relay energized
+boolean relayJustTurnedON = false; // true when relay just turned on by push button
+boolean wifiTurnRelayON = false; // set true if WiFi connection commands relay ON
+boolean wifiTurnRelayOFF = false; //  set true if WiFi connection commands relay OFF
+boolean GPIO2wasLOW = false; // set true if last debouced read of GPIO2 as an input was LOW, false if GPIO2 is an output
+
+boolean configMode = false;  // not in config mode normally
+void setup() {
+  pinMode(0, OUTPUT);
+  digitalWrite(0, LOW); // make GPIO0 output low
+  // check GPIO2 input to see if push button pressed connecting it to GPIO0
+  configMode = (digitalRead(2) == LOW);
+  if (configMode) {
+    // start AP and get ready to serve config web page
+    // leave relay on to indicate in config mode
+    //......
+  } else {
+    // normal usage
+    // make GPIO0 HIGH to turn off the relay
+    digitalWrite(0, HIGH);
+    // set up GPIO0 / GPIO2 to detect user push button
+    // relay ALWAYS starts in OFF state
+    // NOTE: push button is ALWAYS open here
+    // because if it was pushed then we would be
+    // in config mode and not here
+    pinMode(0, INPUT);
+    pinMode(2, OUTPUT);
+    digitalWrite(2, LOW);
+    //.....
+  }
+  // rest of setup()
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+
+  if (!relayOn) {
+    // case i)
+    // check if GPIO0 is being pulled LOW by push button being pressed and GPIO2 Output LOW
+    if (digitalRead(0) == LOW) {
+      // hold relay ON with GPIO0
+      pinMode(2, INPUT);
+      pinMode(0, OUTPUT);
+      digitalWrite(0, LOW); // make GPIO0 output low
+      // make GPIO2 an input
+      relayJustTurnedON = true;
+      relayOn = true; 
+      GPIO2wasLOW = true;
+    }
+  } else {
+    // relay is ON, held by GPIO0 output LOW
+    // case ii)
+    if (relayJustTurnedON) {
+      // look for GPIO2 going high on push button release from turn ON
+      if (digitalRead(2) == HIGH) {
+        relayJustTurnedON = false;
+        GPIO2wasLOW = false;
+      } // else keep looking for push button release
+    } else {
+      // check GPIO2 for LOW then HIGH
+      if (GPIO2wasLOW) {
+        // check for release
+        if (digitalRead(2) == HIGH) {
+          // turn relay off
+          pinMode(0, INPUT); // turns relay off
+          pinMode(2, OUTPUT); // set GPIO2 as Output LOW
+          digitalWrite(2, LOW);
+          relayOn = false;
+        }
+      } else {
+        // not was low check if push button has been pressed
+        if (digitalRead(2) == LOW) {
+          GPIO2wasLOW = true;
+          // hold relay ON with GPIO0 until release of push button
+        } // else loop and keep looking for LOW input
+      }
+    }
+  }
+
+  if (wifiTurnRelayON) {
+    pinMode(2, INPUT);
+    pinMode(0, OUTPUT);
+    digitalWrite(0, LOW);
+    wifiTurnRelayON = false; // finished this
+    relayJustTurnedON = false;
+  }
+  if (wifiTurnRelayOFF) {
+    pinMode(0, INPUT);
+    pinMode(2, OUTPUT);
+    digitalWrite(2, LOW);
+    wifiTurnRelayOFF = false; // finished this
+  }
+
+  // ...
+  // code for WiFi connection to control relay
+  // should set either wifiTurnRelayOFF or wifiTurnRelayON to true
+  // ...
+
+}
